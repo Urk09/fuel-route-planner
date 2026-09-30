@@ -6,6 +6,9 @@ dist/
 wheels/
 *.egg-info
 
+#localfiles
+progress.md
+
 # Virtual environments
 .venv
 
