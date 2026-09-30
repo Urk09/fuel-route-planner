@@ -7,10 +7,13 @@ from django.conf import settings
 CITIES_FILE = Path(settings.BASE_DIR) / "data" / "us_cities.csv"
 OVERRIDES_FILE = Path(settings.BASE_DIR) / "data" / "city_overrides.csv"
 
+ABBREVIATIONS = {"st": "saint", "ste": "sainte", "ft": "fort", "mt": "mount"}
+
 def normalize_city(name: str) -> str:
-    """Lowercase and tidy spaces: '  Big  Cabin ' -> 'big cabin'."""
-    
-    return " ".join(name.lower().split())
+    """'St. Louis', 'saint louis' and '  ST LOUIS ' all become 'saint louis'."""
+    name = name.lower().replace(".", " ")
+    words = [ABBREVIATIONS.get(word, word) for word in name.split()]
+    return " ".join(words)
 
 
 @cache

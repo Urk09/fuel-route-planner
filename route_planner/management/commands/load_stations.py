@@ -8,14 +8,9 @@ from django.core.management.base import BaseCommand
 from route_planner.models import FuelStation
 from route_planner.services.city_lookup import find_city
 
-PRICES_FILE = Path(settings.BASE_DIR) / "data" / "fuel-prices-for-be-assessment.csv"
+from route_planner.services.us_states import US_STATES
 
-US_STATES = {
-    "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL",
-    "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE",
-    "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD",
-    "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
-}
+PRICES_FILE = Path(settings.BASE_DIR) / "data" / "fuel-prices-for-be-assessment.csv"
 
 
 def clean_text(value: str) -> str:
