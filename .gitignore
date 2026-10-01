@@ -8,6 +8,7 @@ wheels/
 
 #localfiles
 progress.md
+try_route.py
 
 # Virtual environments
 .venv
