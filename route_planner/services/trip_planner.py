@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from route_planner.models import FuelStation
+from route_planner.services.route_cache import CachedRoutingClient
 from route_planner.services.location_resolver import LocationResolver, Place
 from route_planner.services.optimizer import FuelOption, FuelPlan, FuelPlanner, PlannedStop
 from route_planner.services.routing_api import OpenRouteServiceClient, Route
@@ -43,12 +44,12 @@ class TripPlanner:
     def __init__(
         self,
         location_resolver: LocationResolver | None = None,
-        routing_client: OpenRouteServiceClient | None = None,
+        routing_client: CachedRoutingClient | OpenRouteServiceClient | None = None,
         station_finder: StationFinder | None = None,
         fuel_planner: FuelPlanner | None = None,
     ):
         self.location_resolver = location_resolver or LocationResolver()
-        self.routing_client = routing_client or OpenRouteServiceClient()
+        self.routing_client = routing_client or CachedRoutingClient()  # Redis first, then OpenRouteService
         self.station_finder = station_finder or StationFinder()
         self.fuel_planner = fuel_planner or FuelPlanner()  # the vehicle: the brief's car by default
 
