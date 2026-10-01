@@ -115,3 +115,17 @@ class TripPlanApiTests(APITestCase):
 
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.json()["detail"], "Could not reach the routing service.")
+
+    def test_map_shows_the_road_the_ends_and_every_stop(self):
+        data = self.plan({"start": "Chicago, IL", "finish": "St. Louis, MO"}).json()
+
+        features = data["map"]["features"]
+        self.assertEqual(data["map"]["type"], "FeatureCollection")
+        self.assertEqual(
+            [feature["properties"]["kind"] for feature in features],
+            ["road", "start", "finish", "fuel_stop", "fuel_stop"],
+        )
+        self.assertEqual(len(features[0]["geometry"]["coordinates"]), len(ROAD_POINTS))
+        self.assertEqual(features[3]["properties"]["name"], "START STOP")
+        # GeoJSON order is [longitude, latitude]: the first stop is at latitude 41, longitude -89.
+        self.assertEqual(features[3]["geometry"]["coordinates"], [-89.0, 41.0])

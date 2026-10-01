@@ -83,6 +83,12 @@ class TripStopSerializer(serializers.Serializer):
 
 
 class TripPlanSerializer(serializers.Serializer):
+
+    ROAD_COLOR = "#2563eb"
+    START_COLOR = "#16a34a"
+    FINISH_COLOR = "#dc2626"
+    FUEL_STOP_COLOR = "#f59e0b"
+
     start = PlaceSerializer()
     finish = PlaceSerializer()
     distance_miles = RoundedFloatField(1, source="route.distance_miles")
@@ -92,17 +98,60 @@ class TripPlanSerializer(serializers.Serializer):
     total_gallons = RoundedDecimalField(2)
     total_fuel_cost = serializers.SerializerMethodField()
     notes = serializers.ListField(child=serializers.CharField())
-    route = serializers.SerializerMethodField()
+    map = serializers.SerializerMethodField()
 
     def get_total_fuel_cost(self, plan) -> str:
         # Add up the rounded stop costs, so the numbers on screen always add up.
         rounded_costs = [RoundedDecimalField.round(stop.purchase.cost, 2) for stop in plan.stops]
         return str(sum(rounded_costs, Decimal("0.00")))
 
-    def get_route(self, plan) -> dict:
-        # The road as GeoJSON, the standard map format. GeoJSON order is [longitude, latitude].
-        coordinates = [
-            [round(longitude, COORDINATE_DECIMALS), round(latitude, COORDINATE_DECIMALS)]
-            for latitude, longitude in plan.route.points
+    def get_map(self, plan) -> dict:
+        """The whole trip as GeoJSON, the standard map format: the road, the start, the finish
+        and every fuel stop with its details. Paste it into geojson.io to see it."""
+        features = [
+            self._road(plan.route.points),
+            self._marker(
+                plan.start.latitude,
+                plan.start.longitude,
+                {"kind": "start", "label": plan.start.label, "marker-color": self.START_COLOR},
+            ),
+            self._marker(
+                plan.finish.latitude,
+                plan.finish.longitude,
+                {"kind": "finish", "label": plan.finish.label, "marker-color": self.FINISH_COLOR},
+            ),
         ]
-        return {"type": "LineString", "coordinates": coordinates}
+        for stop_number, stop in enumerate(plan.stops, start=1):
+            details = dict(TripStopSerializer(stop).data)  # name, price, gallons, cost, ...
+            details.pop("route_point")  # already the marker's position
+            latitude, longitude = stop.on_route.route_point
+            features.append(
+                self._marker(
+                    latitude,
+                    longitude,
+                    {"kind": "fuel_stop", "stop_number": stop_number, **details, "marker-color": self.FUEL_STOP_COLOR},
+                )
+            )
+        return {"type": "FeatureCollection", "features": features}
+
+    def _road(self, points: list[tuple[float, float]]) -> dict:
+        """The road as a line. GeoJSON order is [longitude, latitude]."""
+        coordinates = [self._coordinates(latitude, longitude) for latitude, longitude in points]
+        return {
+            "type": "Feature",
+            "geometry": {"type": "LineString", "coordinates": coordinates},
+            "properties": {"kind": "road", "stroke": self.ROAD_COLOR, "stroke-width": 4},
+        }
+
+    def _marker(self, latitude: float, longitude: float, properties: dict) -> dict:
+        """One point on the map, with the details shown when you click it."""
+        return {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": self._coordinates(latitude, longitude)},
+            "properties": properties,
+        }
+
+    @staticmethod
+    def _coordinates(latitude: float, longitude: float) -> list[float]:
+        """[longitude, latitude], rounded to 5 decimals (about 1 metre)."""
+        return [round(longitude, COORDINATE_DECIMALS), round(latitude, COORDINATE_DECIMALS)]

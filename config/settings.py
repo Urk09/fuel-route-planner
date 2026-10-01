@@ -30,7 +30,14 @@ SECRET_KEY = 'django-insecure--qvd1zkh^45@5(dkfy!hlpo_6*=!x)(vc@dzstc_(@22wd)$2e
 DEBUG = True
 
 ALLOWED_HOSTS = []
+# Required: the app must not start without it.
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 
+# Off unless .env turns it on. Safe by default.
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() == "true"
+
+# Comma-separated list, e.g. "localhost,127.0.0.1".
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 # Application definition
 
