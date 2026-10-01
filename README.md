@@ -17,7 +17,7 @@ It calls the routing API **once per new trip**. Repeat trips are served from a R
 You need Docker and a free OpenRouteService API key ([sign up here](https://openrouteservice.org/dev/#/signup)).
 
 ```bash
-git clone https://github.com/<your-username>/fuel-route-planner.git
+git clone https://github.com/Urk09/fuel-route-planner.git
 cd fuel-route-planner
 cp .env.example .env          # then put your key in OPEN_ROUTE_SERVICE_API_KEY
 docker compose up --build
