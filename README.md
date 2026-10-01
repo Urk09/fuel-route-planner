@@ -130,9 +130,7 @@ Stations are laid out along the route by mile marker. At each station:
 3. **Otherwise,** fill up and drive to the cheapest station within reach.
 4. **No station within 500 miles?** The trip is impossible: a clear 422 error says between which miles.
 
-This is the classic greedy solution to the "gas station problem", and it is exactly optimal for this model. I checked it against an exact linear-programming solver on 300 random trips: same cost every time.
-
-Assumptions (all from the brief, or stated here):
+Assumptions:
 
 - **Start of the trip:** the tank starts empty and is filled at the cheapest station within 10 miles of the start. If there is none, the plan assumes a full tank at departure, says so in `notes`, and doesn't charge for it.
 - **Several stations at the same spot:** only the cheapest is used.
@@ -143,9 +141,6 @@ Real results: Chicago → St. Louis is 305.7 miles, 4 stops, $94.56. New York �
 
 **Skipping small stops (optional).** Because the plan is optimal to the cent, it can stop for a tiny amount when a slightly cheaper station is very close: Chicago → St. Louis has two stops worth $0.01–0.02. With `"skip_small_stops": true`, every stop must buy at least 10% of a tank (5 gallons for this car). The planner makes the cheapest plan, finds a stop that buys less, drops that station and plans again. A small stop is kept only when the trip is impossible without it, and the first fill-up is never skipped (the tank starts empty). Chicago → St. Louis goes from 4 stops to 2, for about a cent more. The minimum is a share of the tank, so a bigger truck tank gets a bigger minimum.
 
-### Finding the stations near the route
-
-A coast-to-coast route has about 21,500 road points, and there are 6,626 stations. Checking every station against every point took about 9 seconds even for Chicago → St. Louis. Instead, the route points are put into a grid of squares at least 10 miles wide, and each station is only compared with the points in its own square and the 8 around it: **0.05 s for Chicago → St. Louis, 0.15 s coast to coast.**
 
 ### Caching
 
@@ -217,17 +212,10 @@ Dockerfile, docker-compose.yml, docker-compose.dev.yml
 
 ---
 
-## What I'd improve next
+## What can be improved
 
-- **A cost per stop:** trade fewer stops against fuel cost (NY → LA has 18 stops; 6–8 would be enough at a slightly higher cost).
-- **A fuel reserve** (never plan to arrive empty) and **charging for detours**.
 - **More accurate station locations** (exact exit coordinates), and addresses or coordinates as input.
-- **Truck routing:** OpenRouteService's `driving-hgv` profile plus a truck `FuelPlanner`.
-- **Simplify the route line** before sending it (NY → LA is about 0.5 MB).
 - **A small web page** (Leaflet) that draws the API's GeoJSON map.
-- **Resilience:** a backup routing provider, and a second route store in Postgres if the daily quota becomes the limit. It fits the current design as one more wrapper: `CachedRoutingClient(StoredRoutingClient(OpenRouteServiceClient()))`.
-- **CI** (tests on every push) and **deployment** (e.g. GCP).
-
 ---
 
 ## Data sources
