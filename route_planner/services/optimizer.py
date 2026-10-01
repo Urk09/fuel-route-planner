@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 
 DEFAULT_RANGE_MILES = 500.0
 DEFAULT_MILES_PER_GALLON = 10.0
+SMALL_STOP_SHARE_OF_TANK = 0.10  # with "skip small stops", a stop must buy at least 10% of a tank
 START_AREA_MILES = 10.0
 MIN_GALLONS = 0.001
 
@@ -52,12 +53,61 @@ class FuelPlanner:
         self,
         range_miles: float = DEFAULT_RANGE_MILES,
         miles_per_gallon: float = DEFAULT_MILES_PER_GALLON,
+        min_purchase_gallons: float = 0.0,
     ):
         self.range_miles = range_miles
         self.miles_per_gallon = miles_per_gallon
+        self.min_purchase_gallons = min_purchase_gallons  # 0 = off: the plan is cheapest to the cent
+
+    def skipping_small_stops(self) -> "FuelPlanner":
+        """The same vehicle, but every stop must buy at least 10% of a tank (5 gallons for the brief's car)."""
+        
+        tank_gallons = self.range_miles / self.miles_per_gallon
+        return FuelPlanner(
+            range_miles=self.range_miles,
+            miles_per_gallon=self.miles_per_gallon,
+            min_purchase_gallons=tank_gallons * SMALL_STOP_SHARE_OF_TANK,
+        )
 
     def plan(self, fuel_options: list[FuelOption], trip_miles: float) -> FuelPlan:
-        """Cheapest way to buy fuel for a trip of `trip_miles`."""
+        """The cheapest plan, then (if a minimum purchase is set) without small stops.
+
+        Plan, find a stop that buys too little, drop that station, plan again.
+        A small stop is kept when the trip is impossible without it.
+        """
+        fuel_options = list(fuel_options)
+        plan = self._cheapest_plan(fuel_options, trip_miles)
+        stations_to_keep: set[int] = set()
+
+        while True:
+            small_stop = self._first_small_stop(plan, stations_to_keep)
+            if small_stop is None:
+                return plan
+
+            options_without_stop = [
+                option for option in fuel_options if option.station_id != small_stop.station_id
+            ]
+            try:
+                plan = self._cheapest_plan(options_without_stop, trip_miles)
+                fuel_options = options_without_stop
+            except FuelPlanError:
+                stations_to_keep.add(small_stop.station_id)
+
+    def _first_small_stop(self, plan: FuelPlan, stations_to_keep: set[int]) -> PlannedStop | None:
+        """The first stop that buys less than the minimum. The first fill-up doesn't count:
+        the tank starts empty, so that purchase can't be skipped."""
+        for stop in plan.stops:
+            is_first_fill_up = stop.mile == 0
+            if (
+                stop.gallons < self.min_purchase_gallons
+                and not is_first_fill_up
+                and stop.station_id not in stations_to_keep
+            ):
+                return stop
+        return None
+
+    def _cheapest_plan(self, fuel_options: list[FuelOption], trip_miles: float) -> FuelPlan:
+        """The cheapest way to buy fuel for a trip of `trip_miles`"""
         
         stations, miles_in_tank, notes = self._starting_point(self._cheapest_per_spot(fuel_options))
         planned_stops: list[PlannedStop] = []

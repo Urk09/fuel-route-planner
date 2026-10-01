@@ -1,0 +1,190 @@
+{
+  "info": {
+    "_postman_id": "09456055-417c-4c21-97b9-851f3a707634",
+    "name": "Fuel Route Planner",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "9799919"
+  },
+  "item": [
+    {
+      "name": "Plan trip – Chicago to St. Louis",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"start\": \"Chicago, IL\", \"finish\": \"St. Louis, MO\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/trip-plan/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "trip-plan",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Plan trip – New York to Los Angeles",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"start\": \"New York, NY\", \"finish\": \"Los Angeles, CA\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/trip-plan/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "trip-plan",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Error 400 – missing finish",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"start\": \"Chicago, IL\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/trip-plan/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "trip-plan",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Error 422 – unknown city",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"start\": \"Nowhere, IL\", \"finish\": \"St. Louis, MO\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/trip-plan/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "trip-plan",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Error 422 – wrong format",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"start\": \"Chicago IL\", \"finish\": \"St. Louis, MO\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/trip-plan/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "trip-plan",
+            ""
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Error 422 – Alaska not supported",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"start\": \"Anchorage, AK\", \"finish\": \"St. Louis, MO\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/trip-plan/",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "v1",
+            "trip-plan",
+            ""
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": ""
+    }
+  ]
+}

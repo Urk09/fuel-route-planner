@@ -129,3 +129,22 @@ class TripPlanApiTests(APITestCase):
         self.assertEqual(features[3]["properties"]["name"], "START STOP")
         # GeoJSON order is [longitude, latitude]: the first stop is at latitude 41, longitude -89.
         self.assertEqual(features[3]["geometry"]["coordinates"], [-89.0, 41.0])
+    
+    def test_skip_small_stops_option(self):
+        # A slightly cheaper station 1.4 miles before CHEAP STOP: the cheapest plan stops there for 0.14 gallons.
+        self.create_station(4, "NEXT DOOR STOP", price="3.400", latitude=40.02, longitude=-89.0)
+        trip = {"start": "Chicago, IL", "finish": "St. Louis, MO"}
+
+        cheapest = self.plan(trip).json()
+        without_small_stops = self.plan({**trip, "skip_small_stops": True}).json()
+
+        self.assertEqual(
+            [stop["name"] for stop in cheapest["fuel_stops"]],
+            ["START STOP", "NEXT DOOR STOP", "CHEAP STOP"],
+        )
+        self.assertEqual(
+            [stop["name"] for stop in without_small_stops["fuel_stops"]],
+            ["START STOP", "CHEAP STOP"],
+        )
+        self.assertFalse(cheapest["skip_small_stops"])
+        self.assertTrue(without_small_stops["skip_small_stops"])

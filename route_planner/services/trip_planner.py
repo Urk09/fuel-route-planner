@@ -27,6 +27,7 @@ class TripPlan:
     finish: Place
     route: Route
     fuel_planner: FuelPlanner
+    skip_small_stops: bool
     stops: list[TripStop]
     total_gallons: float
     total_cost: float
@@ -53,21 +54,24 @@ class TripPlanner:
         self.station_finder = station_finder or StationFinder()
         self.fuel_planner = fuel_planner or FuelPlanner()  # the vehicle: the brief's car by default
 
-    def plan(self, start_text: str, finish_text: str) -> TripPlan:
-        """Text in, full plan out."""
+    def plan(self, start_text: str, finish_text: str, skip_small_stops: bool = False) -> TripPlan:
+        """Text in, full plan out. `skip_small_stops` avoids stops that would buy only a little fuel."""
+        fuel_planner = self.fuel_planner.skipping_small_stops() if skip_small_stops else self.fuel_planner
+
         start = self.location_resolver.resolve(start_text)
         finish = self.location_resolver.resolve(finish_text)
         route = self.routing_client.get_route(start, finish)
 
         stations_on_route = self.station_finder.find_near_route(route, FuelStation.objects.all())
         fuel_options = self._fuel_options(stations_on_route)
-        fuel_plan = self.fuel_planner.plan(fuel_options, route.distance_miles)
+        fuel_plan = fuel_planner.plan(fuel_options, route.distance_miles)
 
         return TripPlan(
             start=start,
             finish=finish,
             route=route,
-            fuel_planner=self.fuel_planner,
+            fuel_planner=fuel_planner,
+            skip_small_stops=skip_small_stops,
             stops=self._trip_stops(fuel_plan, stations_on_route),
             total_gallons=fuel_plan.total_gallons,
             total_cost=fuel_plan.total_cost,

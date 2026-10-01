@@ -105,3 +105,27 @@ class FuelPlannerTests(SimpleTestCase):
 
         # Can't reach the finish on one tank: fill up (40 gallons), then top up at mile 150.
         self.assertEqual(stops_summary(plan), [(0, 40), (150, 20)])
+
+    def test_skip_small_stops_drives_past_a_stop_that_would_buy_only_a_little(self):
+        fuel_options = [
+            FuelOption(mile=0, price=3.40, station_id=1),
+            FuelOption(mile=200, price=3.30, station_id=2),
+            FuelOption(mile=201, price=3.00, station_id=3),
+        ]
+
+        cheapest = self.planner.plan(fuel_options, trip_miles=400)
+        without_small_stops = self.planner.skipping_small_stops().plan(fuel_options, trip_miles=400)
+
+        # The cheapest plan stops at mile 200 for 0.1 gallons; with the option on, we drive past it.
+        self.assertEqual(stops_summary(cheapest), [(0, 20), (200, 0.1), (201, 19.9)])
+        self.assertEqual(stops_summary(without_small_stops), [(0, 20.1), (201, 19.9)])
+
+    def test_skip_small_stops_keeps_a_small_stop_the_trip_needs(self):
+        fuel_options = [
+            FuelOption(mile=0, price=3.00, station_id=1),
+            FuelOption(mile=450, price=3.50, station_id=2),
+        ]
+        plan = self.planner.skipping_small_stops().plan(fuel_options, trip_miles=520)
+
+        # Only 2 gallons at mile 450, but without it the car can't reach the finish.
+        self.assertEqual(stops_summary(plan), [(0, 50), (450, 2)])

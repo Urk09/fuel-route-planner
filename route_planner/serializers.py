@@ -42,6 +42,7 @@ class TripRequestSerializer(serializers.Serializer):
 
     start = serializers.CharField(max_length=200)
     finish = serializers.CharField(max_length=200)
+    skip_small_stops = serializers.BooleanField(required=False, default=False)
 
 
 class PlaceSerializer(serializers.Serializer):
@@ -94,6 +95,7 @@ class TripPlanSerializer(serializers.Serializer):
     distance_miles = RoundedFloatField(1, source="route.distance_miles")
     duration_hours = RoundedFloatField(1, source="route.duration_hours")
     vehicle = VehicleSerializer(source="fuel_planner")
+    skip_small_stops = serializers.BooleanField()
     fuel_stops = TripStopSerializer(source="stops", many=True)
     total_gallons = RoundedDecimalField(2)
     total_fuel_cost = serializers.SerializerMethodField()
