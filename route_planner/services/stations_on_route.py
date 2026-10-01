@@ -1,71 +1,89 @@
+"""Finds the fuel stations near a route, and how far along the route each one is."""
+
 import math
 from dataclasses import dataclass
 
 from route_planner.models import FuelStation
+from route_planner.services.geo import Geo
 from route_planner.services.routing_api import Route
-from route_planner.services.geo import distance_miles
-
-SEARCH_RADIUS_MILES = 10.0
-# A grid square must be at least SEARCH_RADIUS_MILES wide everywhere in the US.
-# East-west degrees are narrowest at the northern border (49° N): about 45 miles per degree.
-NARROWEST_MILES_PER_DEGREE = 45.0
-GRID_CELL_DEGREES = SEARCH_RADIUS_MILES / NARROWEST_MILES_PER_DEGREE  # about 0.22°
 
 
 @dataclass(frozen=True)
 class StationOnRoute:
     station: FuelStation
-    mile_marker: float                # trip-meter reading where the station is reached
-    off_route_miles: float            # distance from the station to the road
-    route_point: tuple[float, float]  # closest road point (lat, lon): where its map marker goes
+    mile_marker: float  # how far along the route the station is
+    off_route_miles: float  # how far the station is from the road
+    route_point: tuple[float, float]  # the road point closest to the station
 
 
-def grid_cell(point: tuple[float, float]) -> tuple[int, int]:
-    """Which grid square (pigeonhole) a (lat, lon) point falls in."""
-    
-    return math.floor(point[0] / GRID_CELL_DEGREES), math.floor(point[1] / GRID_CELL_DEGREES)
+class StationFinder:
+    """Grid search: put every route point into a square, then check only the squares around each station."""
 
-def mile_markers(points: list[tuple[float, float]]) -> list[float]:
-    """Running total of distance along the route: the 'trip meter' reading at each point."""
-    
-    markers = [0.0]
-    
-    for previous, current in zip(points, points[1:]):
-        markers.append(markers[-1] + distance_miles(previous, current))
-    
-    return markers
+    SEARCH_RADIUS_MILES = 10.0
+    # One degree of longitude is shortest at the US's northern edge (49°N): about 45 miles.
+    NARROWEST_MILES_PER_DEGREE = 45.0
 
-def find_stations_near_route(route: Route, stations: list[FuelStation]) -> list[StationOnRoute]:
-    """Stations within SEARCH_RADIUS_MILES of the road, sorted by mile marker."""
-    
-    markers = mile_markers(route.points)
+    def __init__(self, search_radius_miles: float = SEARCH_RADIUS_MILES):
+        self.search_radius_miles = search_radius_miles
+        # A square is at least as wide as the search radius, so the 3x3 squares around a station cover it.
+        self.square_size_degrees = search_radius_miles / self.NARROWEST_MILES_PER_DEGREE
 
-    # 1. Sort every road point into its grid square, once.
-    squares = {}
-    
-    for index, point in enumerate(route.points):
-        squares.setdefault(grid_cell(point), []).append(index)
+    def find_near_route(self, route: Route, stations) -> list[StationOnRoute]:
+        """Every station within the search radius of the road, ordered by mile marker."""
+        mile_markers = self.mile_markers(route.points)
+        squares = self._route_points_by_square(route.points)
 
-    found = []
-    for station in stations:
-        position = (station.latitude, station.longitude)
-        row, col = grid_cell(position)
+        found = []
+        for station in stations:
+            station_point = (station.latitude, station.longitude)
+            nearby_point_indexes = self._indexes_in_surrounding_squares(squares, station_point)
+            if not nearby_point_indexes:
+                continue
 
-        # 2. Only the road points in this square and the 8 around it.
-        nearby = [
-            index
-            for d_row in (-1, 0, 1)
-            for d_col in (-1, 0, 1)
-            for index in squares.get((row + d_row, col + d_col), [])
-        ]
-        
-        if not nearby:
-            continue  # no road anywhere near this station: skip it
+            distance, closest_index = min(
+                (Geo.distance_miles(station_point, route.points[index]), index)
+                for index in nearby_point_indexes
+            )
+            if distance <= self.search_radius_miles:
+                found.append(
+                    StationOnRoute(
+                        station=station,
+                        mile_marker=mile_markers[closest_index],
+                        off_route_miles=distance,
+                        route_point=route.points[closest_index],
+                    )
+                )
 
-        # 3. Measure only those, and keep the station if the closest is within the limit.
-        off_route, closest = min((distance_miles(position, route.points[i]), i) for i in nearby)
-        
-        if off_route <= SEARCH_RADIUS_MILES:
-            found.append(StationOnRoute(station, markers[closest], off_route, route.points[closest]))
+        return sorted(found, key=lambda item: item.mile_marker)
 
-    return sorted(found, key=lambda item: item.mile_marker)
+    @staticmethod
+    def mile_markers(points: list[tuple[float, float]]) -> list[float]:
+        """Running total of distance: how many miles along the route each point is."""
+        markers = [0.0]
+        for previous_point, current_point in zip(points, points[1:]):
+            markers.append(markers[-1] + Geo.distance_miles(previous_point, current_point))
+        return markers
+
+    def _square(self, point: tuple[float, float]) -> tuple[int, int]:
+        """Which grid square a point falls in."""
+        latitude, longitude = point
+        return (
+            math.floor(latitude / self.square_size_degrees),
+            math.floor(longitude / self.square_size_degrees),
+        )
+
+    def _route_points_by_square(self, points: list[tuple[float, float]]) -> dict[tuple[int, int], list[int]]:
+        """Square -> the indexes of the route points inside it."""
+        squares: dict[tuple[int, int], list[int]] = {}
+        for index, point in enumerate(points):
+            squares.setdefault(self._square(point), []).append(index)
+        return squares
+
+    def _indexes_in_surrounding_squares(self, squares, point: tuple[float, float]) -> list[int]:
+        """Route point indexes in the station's square and the 8 squares around it."""
+        row, column = self._square(point)
+        indexes = []
+        for row_offset in (-1, 0, 1):
+            for column_offset in (-1, 0, 1):
+                indexes.extend(squares.get((row + row_offset, column + column_offset), []))
+        return indexes

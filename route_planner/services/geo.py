@@ -1,18 +1,22 @@
+"""Distances on the Earth's surface."""
+
 import math
 
-EARTH_RADIUS_MILES = 3958.8
 
+class Geo:
+    """Earth maths. No settings to hold, so every method is static: call `Geo.distance_miles(...)`."""
 
-def distance_miles(a: tuple[float, float], b: tuple[float, float]) -> float:
-    """Straight-line ("as the crow flies") distance in miles between two (lat, lon) points."""
-    
-    lat1, lon1 = map(math.radians, a)
-    lat2, lon2 = map(math.radians, b)
+    EARTH_RADIUS_MILES = 3958.8
 
-    # haversine formula
-    h = (
-        math.sin((lat2 - lat1) / 2) ** 2
-        + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2
-    )
-    
-    return 2 * EARTH_RADIUS_MILES * math.asin(math.sqrt(h))
+    @staticmethod
+    def distance_miles(point_a: tuple[float, float], point_b: tuple[float, float]) -> float:
+        """Straight-line distance between two (latitude, longitude) points (the haversine formula)."""
+        latitude_a, longitude_a = map(math.radians, point_a)
+        latitude_b, longitude_b = map(math.radians, point_b)
+        latitude_change = latitude_b - latitude_a
+        longitude_change = longitude_b - longitude_a
+        haversine = (
+            math.sin(latitude_change / 2) ** 2
+            + math.cos(latitude_a) * math.cos(latitude_b) * math.sin(longitude_change / 2) ** 2
+        )
+        return 2 * Geo.EARTH_RADIUS_MILES * math.asin(math.sqrt(haversine))
